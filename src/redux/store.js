@@ -1,5 +1,6 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import todosReducer from "./slice/todos.slice.js";
+import todoReducer from "./slice/todo.slice.js";
 // import storage from "redux-persist/lib/storage";
 import {
     persistStore,
@@ -20,6 +21,7 @@ const storage = {
 
 const rootReducer = combineReducers({
     todos: todosReducer,
+    todo: todoReducer
 });
 
 const persistConfig = { key: "todos", storage };

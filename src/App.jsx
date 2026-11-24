@@ -2,10 +2,12 @@ import { useRef } from "react";
 import { useState } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
+import { MdEdit } from "react-icons/md";
 import ReduxProvider from "./redux/ReduxProvider";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
-import { addTask, removeTask } from "./redux/slice/todos.slice";
+import { addTask, editTask, removeTask } from "./redux/slice/todos.slice";
+import { setNewSelected } from "./redux/slice/todo.slice";
 
 function InputForm({ showInputForm, show }) {
     // const reduxState = useSelector((state) => state);
@@ -104,8 +106,111 @@ function InputForm({ showInputForm, show }) {
     );
 }
 
-function TodoCard({ title, done, project, tags, deleteFn, checkedFn }) {
+function EditForm({ showEditForm, show }) {
+    const {id, title, project, deadline, done} = useSelector((state) => state.todo);
+    const disptach = useDispatch();
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        disptach(
+            editTask({
+                id,
+                title: formData.get("title") || title,
+                project: formData.get("project") || project,
+                tags: [],
+                deadline: formData.get("deadline") || deadline,
+                done,
+            }),
+        );
+
+        e.target.reset();
+        showEditForm(false);
+    }
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className={
+                "w-full absolute transition-[top] duration-100 rounded-4xl py-6 px-8 h-full bg-slate-100 items-center justify-start flex-col flex gap-6 " +
+                (show ? "top-[0%]" : "top-full")
+            }
+        >
+            <div className="w-full mb-8 justify-end flex">
+                <button
+                    type="button"
+                    onClick={() => showEditForm(false)}
+                    className="text-2xl cursor-pointer"
+                >
+                    <IoClose />
+                </button>
+            </div>
+
+            <div className="w-full flex flex-col justify-center items-start">
+                <span className="text-gray-500 font-extralight">To-do</span>
+                <input
+                    defaultValue={title}
+                    name="title"
+                    className="w-full text-black font-semibold text-lg outline-0 py-4"
+                    placeholder="Task title"
+                    type="text"
+                />
+            </div>
+
+            <div className="w-full flex flex-col justify-center items-start">
+                <span className="text-gray-500 mb-3 font-extralight">
+                    Project
+                </span>
+                <div className="w-full flex justify-center items-center border rounded-xl border-black/25 p-4">
+                    <select
+                        defaultValue={project}
+                        name="project"
+                        className="w-full text-black font-semibold border-black/25 text-lg outline-0"
+                    >
+                        <option value="home">Home</option>
+                        <option value="lms">LMS</option>
+                        <option value="school">School</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="w-full flex flex-col justify-center items-start">
+                <span className="text-gray-500 font-extralight">Tags</span>
+                <button
+                    type="button"
+                    className="py-4 text-blue-400 flex gap-4 cursor-pointer"
+                >
+                    <FaPlus /> Add Tags
+                </button>
+            </div>
+
+            <div className="w-full flex flex-col justify-center items-start">
+                <span className="text-gray-500 mb-3 font-extralight">
+                    Deadline
+                </span>
+                <input
+                    defaultValue={deadline}
+                    name="deadline"
+                    className="border p-4 rounded-xl border-black/25"
+                    type="date"
+                />
+            </div>
+
+            <button
+                type="submit"
+                className="w-full py-4 shadow shadow-blue-900 rounded-xl bg-blue-500 text-white text-center"
+            >
+                Update
+            </button>
+        </form>
+    );
+}
+
+
+function TodoCard({ title, id, done, project, deadline, tags, deleteFn, showEditForm }) {
     const titleRef = useRef();
+    const dispatch = useDispatch();
 
     function checkChange(e) {
         if (e.target.checked) {
@@ -115,7 +220,7 @@ function TodoCard({ title, done, project, tags, deleteFn, checkedFn }) {
             titleRef.current.style.textDecorationLine = "none";
             titleRef.current.style.color = "black";
         }
-        checkedFn(e.target.checked);
+        dispatch(editTask({id, title, done: e.target.checked, project, tags}))
     }
 
     return (
@@ -148,7 +253,11 @@ function TodoCard({ title, done, project, tags, deleteFn, checkedFn }) {
                     );
                 })}
             </div>
-            <div className="h-full items-center flex">
+            <div className="h-full items-center flex gap-4">
+                <MdEdit onClick={() => {
+                    dispatch(setNewSelected({title, id, done, project, tags, deadline}));
+                    showEditForm(true);
+                }} className="text-lg cursor-pointer" />
                 <FaTrash
                     onClick={deleteFn}
                     className="cursor-pointer text-red-400"
@@ -158,7 +267,7 @@ function TodoCard({ title, done, project, tags, deleteFn, checkedFn }) {
     );
 }
 
-function Home({ showInputForm }) {
+function Home({ showInputForm, showEditForm }) {
     const reduxState = useSelector((state) => state);
     const disptach = useDispatch();
 
@@ -181,6 +290,7 @@ function Home({ showInputForm }) {
                         return (
                             <TodoCard
                                 // checkedFn={(checked) => { }}
+                                showEditForm={showEditForm}
                                 deleteFn={() => deleteTodo(d.id)}
                                 {...d}
                                 key={"card-" + i}
@@ -200,15 +310,20 @@ function Home({ showInputForm }) {
 
 export default function App() {
     const [showInputForm, setShowInputForm] = useState(false);
+    const [showEditForm, setShowEditForm] = useState(false);
 
     return (
         <ReduxProvider>
-            <div className="w-full h-full items-center flex-center flex flex-col">
+            <div className="w-full h-screen items-center justify-center flex flex-col">
                 <div className="w-110 overflow-hidden shadow-lg relative bg-slate-100 rounded-4xl h-175 flex justify-start flex-col items-center">
-                    <Home showInputForm={setShowInputForm} />
+                    <Home showEditForm={setShowEditForm} showInputForm={setShowInputForm} />
                     <InputForm
                         showInputForm={setShowInputForm}
                         show={showInputForm}
+                    />
+                    <EditForm
+                        showEditForm={setShowEditForm}
+                        show={showEditForm}
                     />
                 </div>
             </div>
